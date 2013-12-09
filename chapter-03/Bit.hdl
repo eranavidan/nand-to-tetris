@@ -1,0 +1,22 @@
+// Bit.hdl
+// Author:  Nick Platt <platt.nicholas@gmail.com>
+// License: MIT <http://opensource.org/licenses/MIT>
+
+CHIP Bit {
+   IN in, load;
+   OUT out;
+
+   PARTS:
+      Mux (
+         a   = prevout,
+         b   = in,
+         sel = load,
+         out = i
+      );
+
+      DFF (
+         in  = i,
+         out = out,
+         out = prevout
+      );
+}

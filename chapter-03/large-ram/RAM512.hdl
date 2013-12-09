@@ -1,0 +1,91 @@
+// RAM512.hdl
+// Author:  Nick Platt <platt.nicholas@gmail.com>
+// License: MIT <http://opensource.org/licenses/MIT>
+
+CHIP RAM512 {
+   IN in[16], address[9], load;
+   OUT out[16];
+
+   PARTS:
+      DMux8Way (
+         in  = load,
+         sel = address[6..8],
+         a   = loadmem0,
+         b   = loadmem1,
+         c   = loadmem2,
+         d   = loadmem3,
+         e   = loadmem4,
+         f   = loadmem5,
+         g   = loadmem6,
+         h   = loadmem7
+      );
+
+      RAM64 (
+         in      = in,
+         address = address[0..5],
+         load    = loadmem0,
+         out     = mem0
+      );
+
+      RAM64 (
+         in      = in,
+         address = address[0..5],
+         load    = loadmem1,
+         out     = mem1
+      );
+
+      RAM64 (
+         in      = in,
+         address = address[0..5],
+         load    = loadmem2,
+         out     = mem2
+      );
+
+      RAM64 (
+         in      = in,
+         address = address[0..5],
+         load    = loadmem3,
+         out     = mem3
+      );
+
+      RAM64 (
+         in      = in,
+         address = address[0..5],
+         load    = loadmem4,
+         out     = mem4
+      );
+
+      RAM64 (
+         in      = in,
+         address = address[0..5],
+         load    = loadmem5,
+         out     = mem5
+      );
+
+      RAM64 (
+         in      = in,
+         address = address[0..5],
+         load    = loadmem6,
+         out     = mem6
+      );
+
+      RAM64 (
+         in      = in,
+         address = address[0..5],
+         load    = loadmem7,
+         out     = mem7
+      );
+
+      Mux8Way16 (
+         a   = mem0,
+         b   = mem1,
+         c   = mem2,
+         d   = mem3,
+         e   = mem4,
+         f   = mem5,
+         g   = mem6,
+         h   = mem7,
+         sel = address[6..8],
+         out = out
+      );
+}
