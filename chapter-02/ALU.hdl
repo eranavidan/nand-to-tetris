@@ -1,0 +1,132 @@
+// ALU.hdl
+// Author:  Nick Platt <platt.nicholas@gmail.com>
+// License: MIT <http://opensource.org/licenses/MIT>
+
+CHIP ALU {
+   IN x[16], y[16],
+         zx, nx,
+         zy, ny,
+         f,
+         no;
+   OUT out[16],
+         zr, ng;
+
+   PARTS:
+      /* Functionality */
+
+      // zx: zero x input
+      Mux16 (
+         a   = x,
+         b   = false,
+         sel = zx,
+         out = selx
+      );
+
+      // nx: negate (zeroed?) x input
+      Not16 (
+         in  = selx,
+         out = notx
+      );
+
+      // zy: zero y input
+      Mux16 (
+         a   = y,
+         b   = false,
+         sel = zy,
+         out = sely
+      );
+
+      // ny: negate (zeroed?) y input
+      Not16 (
+         in  = sely,
+         out = noty
+      );
+
+      // select x/zerox or notx as X
+      Mux16 (
+         a   = selx,
+         b   = notx,
+         sel = nx,
+         out = X
+      );
+
+      // select y/zeroy or noty as Y
+      Mux16 (
+         a   = sely,
+         b   = noty,
+         sel = ny,
+         out = Y
+      );
+
+      // function: And
+      And16 (
+         a   = X,
+         b   = Y,
+         out = xandy
+      );
+
+      // function: Add
+      Add16 (
+         a   = X,
+         b   = Y,
+         out = addxy
+      );
+
+      // select xandy/addxy as fxy
+      Mux16 (
+         a   = xandy,
+         b   = addxy,
+         sel = f,
+         out = fxy
+      );
+
+      // no: negate out
+      Not16 (
+         in  = fxy,
+         out = notfxy
+      );
+
+
+
+      /* Output */
+
+      // out
+      Mux16 (
+         a   = fxy,
+         b   = notfxy,
+         sel = no,
+         out = out,
+         out[0..7]  = lows,
+         out[8..15] = highs,
+         out[15]    = msb
+      );
+
+      // zr: flag: out == 0
+      Or8Way (
+         in  = lows,
+         out = low
+      );
+
+      Or8Way (
+         in  = highs,
+         out = high
+      );
+
+      Or (
+         a   = low,
+         b   = high,
+         out = any
+      );
+
+      Not (
+         in = any,
+         out = zr
+      );
+
+      // ng: flag: out < 0
+      And (
+         a   = msb,
+         b   = true,
+         out = ng
+      );
+}
