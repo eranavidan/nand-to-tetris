@@ -1,0 +1,45 @@
+// PC.hdl
+// Author:  Nick Platt <platt.nicholas@gmail.com>
+// License: MIT <http://opensource.org/licenses/MIT>
+
+CHIP PC {
+   IN in[16], inc, load, reset;
+   OUT out[16];
+
+   PARTS:
+      // inc: increment in
+      Inc16 (
+         in  = prevout,
+         out = incin
+      );
+
+      // select in or incin as selin
+      Mux16 (
+         a   = incin,
+         b   = in,
+         sel = load,
+         out = selin
+      );
+
+      // reset: zero in
+      Mux16 (
+         a   = selin,
+         b   = false,
+         sel = reset,
+         out = inval
+      );
+
+      Or8Way (
+         in[0] = inc,
+         in[1] = reset,
+         in[2] = load,
+         out   = Load
+      );
+
+      Register (
+         in   = inval,
+         load = Load,
+         out  = out,
+         out = prevout
+      );
+}
