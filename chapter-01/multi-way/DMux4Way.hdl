@@ -1,0 +1,31 @@
+/* DMux4Way.hdl
+ * Author:  Nick Platt <platt.nicholas@gmail.com>
+ * License: MIT <http://opensource.org/licenses/MIT>
+ */
+
+CHIP DMux4Way {
+   IN  in, sel[2];
+   OUT a, b, c, d;
+
+   PARTS:
+      DMux (
+         in  = in,
+         sel = sel[1],
+         a   = SelAB, // 0x
+         b   = SelCD  // 1x
+      );
+
+      DMux (
+         in  = SelAB,
+         sel = sel[0],
+         a   = a, // 00
+         b   = b  // 01
+      );
+
+      DMux (
+         in  = SelCD,
+         sel = sel[0],
+         a   = c, // 10
+         b   = d  // 11
+      );
+}

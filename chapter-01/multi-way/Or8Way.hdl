@@ -1,0 +1,52 @@
+/* Mux4Way16.hdl
+ * Author:  Nick Platt <platt.nicholas@gmail.com>
+ * License: MIT <http://opensource.org/licenses/MIT>
+ */
+
+CHIP Or8Way {
+   IN in[8];
+   OUT out;
+
+   PARTS:
+      Or (
+         a   = in[0],
+         b   = in[1],
+         out = Or01
+      );
+
+      Or (
+         a   = in[2],
+         b   = in[3],
+         out = Or23
+      );
+
+      Or (
+         a   = in[4],
+         b   = in[5],
+         out = Or45
+      );
+
+      Or (
+         a   = in[6],
+         b   = in[7],
+         out = Or67
+      );
+
+      Or (
+         a   = Or01,
+         b   = Or23,
+         out = Or0123
+      );
+
+      Or (
+         a   = Or45,
+         b   = Or67,
+         out = Or4567
+      );
+
+      Or (
+         a   = Or0123,
+         b   = Or4567,
+         out = out
+      );
+}

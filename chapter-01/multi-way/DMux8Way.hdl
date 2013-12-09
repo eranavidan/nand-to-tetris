@@ -1,0 +1,47 @@
+/* DMux8Way.hdl
+ * Author:  Nick Platt <platt.nicholas@gmail.com>
+ * License: MIT <http://opensource.org/licenses/MIT>
+ */
+
+CHIP DMux8Way {
+   IN  in, sel[3];
+   OUT a, b, c, d, e, f, g, h;
+
+   PARTS:
+      DMux4Way (
+         in  = in,
+         sel = sel[1..2],
+         a   = SelAB, // 00x
+         b   = SelCD,  // 01x
+         c   = SelEF, // 10x
+         d   = SelGH  // 11x
+      );
+
+      DMux (
+         in  = SelAB,
+         sel = sel[0],
+         a   = a, // 000
+         b   = b  // 001
+      );
+
+      DMux (
+         in  = SelCD,
+         sel = sel[0],
+         a   = c, // 010
+         b   = d  // 011
+      );
+
+      DMux (
+         in  = SelEF,
+         sel = sel[0],
+         a   = e, // 100
+         b   = f  // 101
+      );
+
+      DMux (
+         in  = SelGH,
+         sel = sel[0],
+         a   = g, // 110
+         b   = h  // 111
+      );
+}
