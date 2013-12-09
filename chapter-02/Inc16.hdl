@@ -1,0 +1,15 @@
+// Inc16.hdl
+// Author:  Nick Platt <platt.nicholas@gmail.com>
+// License: MIT <http://opensource.org/licenses/MIT>
+
+CHIP Inc16 {
+   IN in[16];
+   OUT out[16];
+
+   PARTS:
+      Add16 (
+         a    = in,
+         b[0] = true,
+         out  = out
+      );
+}

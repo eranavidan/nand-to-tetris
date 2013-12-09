@@ -1,0 +1,29 @@
+// FullAdder.hdl
+// Author:  Nick Platt <platt.nicholas@gmail.com>
+// License: MIT <http://opensource.org/licenses/MIT>
+
+CHIP FullAdder {
+   IN a, b, c;
+   OUT sum, carry;
+
+   PARTS:
+      HalfAdder (
+         a     = a,
+         b     = b,
+         sum   = SumAB,
+         carry = CarryAB
+      );
+
+      HalfAdder (
+         a     = SumAB,
+         b     = c,
+         sum   = sum,
+         carry = CarryABC
+      );
+
+      Or (
+         a = CarryAB,
+         b = CarryABC,
+         out = carry
+      );
+}
