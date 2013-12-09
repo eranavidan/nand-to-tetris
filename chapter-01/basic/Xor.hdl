@@ -1,0 +1,29 @@
+/* Xor.hdl
+ * Author:  Nick Platt <platt.nicholas@gmail.com>
+ * License: MIT <http://opensource.org/licenses/MIT>
+ */
+
+CHIP Xor {
+   /* (a or b) and not (a and b) */
+   IN  a, b;
+   OUT out;
+
+   PARTS:
+      Or (
+         a  = a,
+         b  = b,
+         out = AOrB
+      );
+
+      Nand (
+         a   = a,
+         b   = b,
+         out = ANandB
+      );
+
+      And (
+         a   = AOrB,
+         b   = ANandB,
+         out = out
+      );
+}

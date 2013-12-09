@@ -1,0 +1,34 @@
+/* Mux.hdl
+ * Author:  Nick Platt <platt.nicholas@gmail.com>
+ * License: MIT <http://opensource.org/licenses/MIT>
+ */
+
+CHIP Mux {
+   /* (a and not sel) or (b and sel) */
+   IN  a, b, sel;
+   OUT out;
+
+   PARTS:
+      Not (
+         in  = sel,
+         out = NotSel
+      );
+
+      And (
+         a   = a,
+         b   = NotSel,
+         out = SelectA
+      );
+
+      And (
+         a   = b,
+         b   = sel,
+         out = SelectB
+      );
+
+      Or (
+         a   = SelectA,
+         b   = SelectB,
+         out = out
+      );
+}

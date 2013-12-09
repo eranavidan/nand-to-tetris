@@ -1,0 +1,21 @@
+/* And.hdl
+ * Author:  Nick Platt <platt.nicholas@gmail.com>
+ * License: MIT <http://opensource.org/licenses/MIT>
+ */
+
+CHIP And {
+   IN  a, b;
+   OUT out;
+
+   PARTS:
+      Nand (
+         a   = a,
+         b   = b,
+         out = o
+      );
+
+      Not (
+         in  = o,
+         out = out
+      );
+}

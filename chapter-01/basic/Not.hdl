@@ -1,0 +1,16 @@
+/* Not.hdl
+ * Author: Nick Platt
+ * License: MIT <http://opensource.org/licences/MIT>
+ */
+
+CHIP Not {
+   IN  in;
+   OUT out;
+
+   PARTS:
+      Nand (
+         a   = in,
+         b   = in,
+         out = out
+      );
+}

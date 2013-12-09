@@ -1,0 +1,27 @@
+/* Or.hdl
+ * Author:  Nick Platt <platt.nicholas@gmail.com>
+ * License: MIT <http://opensource.org/licenses/MIT>
+ */
+
+CHIP Or {
+   /* not(not a and not b) */
+   IN  a, b;
+   OUT out;
+
+   PARTS:
+      Not (
+         in  = a,
+         out = notA
+      );
+
+      Not (
+         in  = b,
+         out = notB
+      );
+
+      Nand (
+         a   = notA,
+         b   = notB,
+         out = out
+      );
+}

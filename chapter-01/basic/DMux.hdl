@@ -1,0 +1,30 @@
+/* DMux.hdl
+ * Author:  Nick Platt <platt.nicholas@gmail.com>
+ * License: MIT <http://opensource.org/licenses/MIT>
+ */
+
+CHIP DMux {
+   /* a: not sel and in
+    * b: sel and in
+    */
+   IN  in, sel;
+   OUT a, b;
+
+   PARTS:
+      Not (
+         in  = sel,
+         out = NotSel
+      );
+
+      And (
+         a   = in,
+         b   = NotSel,
+         out = a
+      );
+
+      And (
+         a   = in,
+         b   = sel,
+         out = b
+      );
+}
