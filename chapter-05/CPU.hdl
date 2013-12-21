@@ -1,0 +1,92 @@
+// CPU.hdl
+// Author:  Nick Platt <platt.nicholas@gmail.com>
+// License: MIT <http://opensource.org/licenses/MIT>
+
+CHIP CPU {
+   IN inM[16], instruction[16], reset;
+   OUT outM[16], writeM, addressM[15], pc[15];
+
+   PARTS:
+      // Constant: 0vvv vvvv vvvv vvvv
+      // Function: 111a cccc ccdd djjj
+
+      DMux (
+         in  = true,
+         sel = instruction[15],
+         a   = isconstant,
+         b   = isfunction
+      );
+
+      Mux16 (
+         a   = instruction,
+         b   = aluout,
+         sel = isfunction,
+         out = ain
+      );
+
+      And ( a=isfunction, b=instruction[5], out=destisa );
+      Or  ( a=isconstant, b=destisa, out=loada );
+
+      ARegister (
+         in   = ain,
+         load = loada,
+         out  = A,
+         out[0..14]  = addressM
+      );
+
+      And (
+         a = isfunction,
+         b = instruction[3],
+         out = writeM
+      );
+
+      And ( a=isfunction, b=instruction[12], out=memaccess );
+      Mux16 (
+         a   = A,
+         b   = inM,
+         sel = memaccess,
+         out = AorM
+      );
+
+      And ( a=isfunction, b=instruction[4], out=loadd );
+      DRegister (
+         in   = aluout,
+         load = loadd,
+         out  = D
+      );
+
+      ALU (
+         x   = D,
+         y   = AorM,
+         zx  = instruction[11],
+         nx  = instruction[10],
+         zy  = instruction[9],
+         ny  = instruction[8],
+         f   = instruction[7],
+         no  = instruction[6],
+         out = aluout,
+         out = outM,
+         zr  = iszero,
+         ng  = isnegative
+      );
+
+      Or  ( a=iszero, b=isnegative, out=isnotpos );
+      Not ( in=isnotpos, out=ispos );
+
+      And ( a=isnegative, b=instruction[2], out=jmplt );
+      And ( a=iszero,     b=instruction[1], out=jmpeq );
+      And ( a=ispos,      b=instruction[0], out=jmpgt );
+
+      Or8Way ( in[0]=jmplt, in[1]=jmpeq, in[2]=jmpgt, out=hasjmp );
+      And    ( a=isfunction, b=hasjmp, out=dojmp );
+      Not    ( in=dojmp, out=nojmp );
+
+      PC (
+         in    = A,
+         inc   = nojmp,
+         load  = dojmp,
+         reset = reset,
+         out[0..14] = pc
+      );
+}
+

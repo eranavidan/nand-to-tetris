@@ -1,0 +1,56 @@
+// Memory.hdl
+// Author:  Nick Platt <platt.nicholas@gmail.com>
+// License: MIT <http://opensource.org/licenses/MIT>
+
+CHIP Memory {
+   IN in[16], load, address[15];
+   OUT out[16];
+
+   PARTS:
+      DMux4Way (
+         in  = load,
+         sel = address[13..14],
+         a   = loadram0,
+         b   = loadram1,
+         c   = loadscreen
+      );
+
+      /* 0000 - 1FFF */
+      RAM16K (
+         in      = in,
+         load    = loadram0,
+         address = address[0..13],
+         out     = ramout0
+      );
+
+      /* 2000 - 3FFF */
+      RAM16K (
+         in      = in,
+         load    = loadram1,
+         address = address[0..13],
+         out     = ramout1
+      );
+
+      /* 4000 - 5fff */
+      Screen (
+         in      = in,
+         load    = loadscreen,
+         address = address[0..12],
+         out     = screenout
+      );
+
+      /* 6000 */
+      Keyboard (
+         out = keyboardout
+      );
+
+      Mux4Way16 (
+         a   = ramout0,
+         b   = ramout1,
+         c   = screenout,
+         d   = keyboardout,
+         sel = address[13..14],
+         out = out
+      );
+}
+

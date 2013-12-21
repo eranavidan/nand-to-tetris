@@ -1,0 +1,32 @@
+// Computer.hdl
+// Author:  Nick Platt <platt.nicholas@gmail.com>
+// License: MIT <http://opensource.org/licenses/MIT>
+
+CHIP Computer {
+   IN reset;
+   OUT;
+
+   PARTS:
+      ROM32K (
+         address = pc,
+         out = romout
+      );
+
+      CPU (
+         instruction = romout,
+         inM = memout,
+         reset = reset,
+         outM = cpuout,
+         writeM = load,
+         addressM = address,
+         pc = pc
+      );
+
+      Memory (
+         in = cpuout,
+         load = load,
+         address = address,
+         out = memout
+      );
+}
+
