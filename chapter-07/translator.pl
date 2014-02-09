@@ -137,7 +137,9 @@ package Writer;
       my ($self, $file) = @_;
 
       $file =~ s/\.\w+$/.asm/;
-      $self->set_file($file)
+      $self->set_file($file);
+
+      $self->{label_count} = -1; # So we'll really start at 0
    }
 
    sub set_file {
@@ -147,138 +149,89 @@ package Writer;
       $self->{fh} = $fh;
    }
 
+   sub decrement_stack_pointer {
+      return unindent('
+         @SP
+         M=M-1
+         ');
+   }
+
+   sub increment_stack_pointer {
+      return unindent('
+         @SP
+         M=M+1
+         ');
+   }
+
+   sub prepare_unary_operation {
+      return unindent('
+         @SP
+         A=M
+         ');
+   }
+
+   sub prepare_binary_operation {
+      return unindent('
+         @SP
+         A=M
+         D=M
+         @SP
+         AM=M-1
+         ');
+   }
+
+   sub conditional {
+      my ($self, $jump_condition) = @_;
+
+      $self->{label_count} += 1;
+
+      return unindent('
+         D=M-D
+         @TRUE_' . $self->{label_count} . '
+         D;'     . $jump_condition      . '
+         @SP
+         A=M
+         M=0
+         @END_'  . $self->{label_count} . '
+         0;JMP
+         (TRUE_' . $self->{label_count} . ')
+         @SP
+         A=M
+         M=-1
+         (END_'  . $self->{label_count} . ')
+         ');
+   }
+
    sub write_arithmetic {
       my ($self, $command) = @_;
       my $fh = $self->{fh};
 
-      print $fh unindent('
-            @SP
-            M=M-1');
+      print $fh $self->decrement_stack_pointer;
 
-      if ($command eq 'add') {
-         print $fh unindent('
-            @SP
-            A=M
-            D=M
-            @SP
-            AM=M-1
-            M=M+D');
-      }
-      elsif ($command eq 'sub') {
-         print $fh unindent('
-            @SP
-            A=M
-            D=M
-            @SP
-            AM=M-1
-            M=M-D');
-      }
-      elsif ($command eq 'neg') {
-         print $fh unindent('
-            @SP
-            A=M
-            M=-M');
-      }
-      elsif ($command eq 'eq') {
-         print $fh unindent('
-            @SP
-            A=M
-            D=M
-            @SP
-            AM=M-1
-            D=M-D
-            @TRUE_' . $self->{label_count} . '
-            D;JEQ
-            @SP
-            A=M
-            M=0
-            @END_' . $self->{label_count} . '
-            0;JMP
-            (TRUE_' . $self->{label_count} . ')
-            @SP
-            A=M
-            M=-1
-            (END_' . $self->{label_count} . ')');
+      if (    grep { $command eq $_ } qw(add sub eq gt lt and or)) {
+         print $fh $self->prepare_binary_operation;
 
-         $self->{label_count} += 1;
-      }
-      elsif ($command eq 'gt') {
-         print $fh unindent('
-            @SP
-            A=M
-            D=M
-            @SP
-            AM=M-1
-            D=M-D
-            @TRUE_' . $self->{label_count} . '
-            D;JGT
-            @SP
-            A=M
-            M=0
-            @END_' . $self->{label_count} . '
-            0;JMP
-            (TRUE_' . $self->{label_count} . ')
-            @SP
-            A=M
-            M=-1
-            (END_' . $self->{label_count} . ')');
+         print $fh 'M=M+D' if $command eq 'add';
+         print $fh 'M=M-D' if $command eq 'sub';
 
-         $self->{label_count} += 1;
-      }
-      elsif ($command eq 'lt') {
-         print $fh unindent('
-            @SP
-            A=M
-            D=M
-            @SP
-            AM=M-1
-            D=M-D
-            @TRUE_' . $self->{label_count} . '
-            D;JLT
-            @SP
-            A=M
-            M=0
-            @END_' . $self->{label_count} . '
-            0;JMP
-            (TRUE_' . $self->{label_count} . ')
-            @SP
-            A=M
-            M=-1
-            (END_' . $self->{label_count} . ')');
+         print $fh $self->conditional('JEQ') if $command eq 'eq';
+         print $fh $self->conditional('JLT') if $command eq 'lt';
+         print $fh $self->conditional('JGT') if $command eq 'gt';
 
-         $self->{label_count} += 1;
+         print $fh 'M=M&D' if $command eq 'and';
+         print $fh 'M=M|D' if $command eq 'or';
       }
-      elsif ($command eq 'and') {
-         print $fh unindent('
-            @SP
-            A=M
-            D=M
-            @SP
-            AM=M-1
-            M=M&D');
-      }
-      elsif ($command eq 'or') {
-         print $fh unindent('
-            @SP
-            A=M
-            D=M
-            @SP
-            AM=M-1
-            M=M|D');
-      }
-      elsif ($command eq 'not') {
-         print $fh unindent('
-            @SP
-            A=M
-            M=!M');
+      elsif ( grep { $command eq $_ } qw(neg not)) {
+         print $fh $self->prepare_unary_operation;
+
+         print $fh 'M=-M' if $command eq 'neg';
+         print $fh 'M=!M' if $command eq 'not';
       }
       else {
          die "Fatal: Unknown command $command"
       }
 
-      print $fh unindent('
-         @SP
-         M=M+1');
+      print $fh $self->increment_stack_pointer;
    }
 
    sub write_push_pop {
@@ -311,16 +264,8 @@ package Writer;
          die "Fatal: Unknown segment $segment";
       }
 
-      if ($command_type eq 'C_PUSH') {
-         print $fh unindent('
-            @SP
-            M=M+1');
-      }
-      elsif ($command_type eq 'C_POP') {
-         print $fh unindent('
-            @SP
-            M=M-1');
-      }
+      print $fh $self->increment_stack_pointer if $command_type eq 'C_PUSH';
+      print $fh $self->decrement_stack_pointer if $command_type eq 'C_POP';
    }
 
    sub close_file {
@@ -335,5 +280,3 @@ package Writer;
       $str =~ s/$whitespace//mg;
       return $str;
    }
-
-
