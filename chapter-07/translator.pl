@@ -12,8 +12,22 @@ die 'Usage: translator.pl [ <file> | <directory> ]' unless $ARGV[0];
 package main;
    my $translator = Translator->new;
    $translator->init;
-   $translator->load_file($ARGV[0]);
-   $translator->translate;
+
+   if (-d $ARGV[0]) {
+      opendir(my $dh, $ARGV[0]) or die "Unable to open directory $ARGV[0]";
+      foreach my $file (grep { -f "$ARGV[0]/$_" && /\.vm$/ } readdir($dh)) {
+         $translator->load_file("$ARGV[0]/$file");
+         $translator->translate;
+      } 
+      closedir($dh);
+   }
+   elsif (-f $ARGV[0]) {
+      $translator->load_file($ARGV[0]);
+      $translator->translate;
+   }
+   else {
+      die 'Fatal: A file or directory must be provided';
+   }
 
 
 package Translator;
@@ -24,6 +38,7 @@ package Translator;
 
       $self->{parser} = Parser->new;
       $self->{writer} = Writer->new;
+      $self->{writer}->init('program.asm');
    }
 
    sub load_file {
@@ -31,8 +46,6 @@ package Translator;
 
       open(my $fh, '<', $file) or die "Unable to open $file";
       $self->{parser}->load_file($fh);
-
-      $self->{writer}->init($file);
    }
 
    sub translate {
@@ -53,6 +66,8 @@ package Translator;
             );
          }
       }
+
+      $self->{writer}->close_file;
    }
 
 
@@ -136,14 +151,7 @@ package Writer;
    sub init {
       my ($self, $file) = @_;
 
-      $file =~ s/\.\w+$/.asm/;
-      $self->set_file($file);
-
       $self->{label_count} = -1; # So we'll really start at 0
-   }
-
-   sub set_file {
-      my ($self, $file) = @_;
 
       open(my $fh, '>', $file) or die "Unable to open $file";
       $self->{fh} = $fh;
