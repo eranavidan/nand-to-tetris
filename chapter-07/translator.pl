@@ -297,6 +297,32 @@ package Writer;
          }
       }
       elsif ($segment eq 'static') {
+         if ($command_type eq 'C_PUSH') {
+            print $fh unindent('
+               @' . $index . '
+               D=A
+               @R16
+               A=M+D
+               D=M
+               @SP
+               A=M
+               M=D');
+         }
+         else {
+            print $fh unindent('
+               @' . $index . '
+               D=A
+               @R16
+               D=M+D
+               @R13
+               M=D
+               @SP
+               A=M
+               D=M
+               @R13
+               A=M
+               M=D');
+         }
       }
       elsif ($segment eq 'constant') {
          print $fh unindent('
