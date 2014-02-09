@@ -161,7 +161,7 @@ package Writer;
             A=M
             D=M
             @SP
-            A=M-1
+            AM=M-1
             M=M+D');
       }
       elsif ($command eq 'sub') {
@@ -170,26 +170,115 @@ package Writer;
             A=M
             D=M
             @SP
-            A=M-1
+            AM=M-1
             M=M-D');
       }
       elsif ($command eq 'neg') {
+         print $fh unindent('
+            @SP
+            A=M
+            M=-M');
       }
       elsif ($command eq 'eq') {
+         print $fh unindent('
+            @SP
+            A=M
+            D=M
+            @SP
+            AM=M-1
+            D=M-D
+            @TRUE_' . $self->{label_count} . '
+            D;JEQ
+            @SP
+            A=M
+            M=0
+            @END_' . $self->{label_count} . '
+            0;JMP
+            (TRUE_' . $self->{label_count} . ')
+            @SP
+            A=M
+            M=-1
+            (END_' . $self->{label_count} . ')');
+
+         $self->{label_count} += 1;
       }
       elsif ($command eq 'gt') {
+         print $fh unindent('
+            @SP
+            A=M
+            D=M
+            @SP
+            AM=M-1
+            D=M-D
+            @TRUE_' . $self->{label_count} . '
+            D;JGT
+            @SP
+            A=M
+            M=0
+            @END_' . $self->{label_count} . '
+            0;JMP
+            (TRUE_' . $self->{label_count} . ')
+            @SP
+            A=M
+            M=-1
+            (END_' . $self->{label_count} . ')');
+
+         $self->{label_count} += 1;
       }
       elsif ($command eq 'lt') {
+         print $fh unindent('
+            @SP
+            A=M
+            D=M
+            @SP
+            AM=M-1
+            D=M-D
+            @TRUE_' . $self->{label_count} . '
+            D;JLT
+            @SP
+            A=M
+            M=0
+            @END_' . $self->{label_count} . '
+            0;JMP
+            (TRUE_' . $self->{label_count} . ')
+            @SP
+            A=M
+            M=-1
+            (END_' . $self->{label_count} . ')');
+
+         $self->{label_count} += 1;
       }
       elsif ($command eq 'and') {
+         print $fh unindent('
+            @SP
+            A=M
+            D=M
+            @SP
+            AM=M-1
+            M=M&D');
       }
       elsif ($command eq 'or') {
+         print $fh unindent('
+            @SP
+            A=M
+            D=M
+            @SP
+            AM=M-1
+            M=M|D');
       }
       elsif ($command eq 'not') {
+         print $fh unindent('
+            @SP
+            A=M
+            M=!M');
       }
       else {
          die "Fatal: Unknown command $command"
       }
+
+      print $fh unindent('
+         @SP
+         M=M+1');
    }
 
    sub write_push_pop {
