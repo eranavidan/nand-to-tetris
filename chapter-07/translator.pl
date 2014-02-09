@@ -234,215 +234,83 @@ package Writer;
       print $fh $self->increment_stack_pointer;
    }
 
+   sub push_constant {
+      my ($self, $value) = @_;
+      return unindent('
+         @' . $value . '
+         D=A
+         @SP
+         A=M
+         M=D
+         ');
+   }
+
+   sub push_into {
+      my ($self, $base, $index, $dereference) = @_;
+      $dereference //= 1;
+
+      return unindent('
+         @' . $index . '
+         D=A
+         @' . $base  . '
+         '  . ($dereference ? 'A=M+D' : 'A=A+D') . '
+         D=M
+         @SP
+         A=M
+         M=D
+         ');
+   }
+
+   sub pop_into {
+      my ($self, $base, $index, $dereference) = @_;
+      $dereference //= 1;
+
+      return unindent('
+         @' . $index . '
+         D=A
+         @' . $base . '
+         '  . ($dereference ? 'D=M+D' : 'D=A+D') . '
+         @R13
+         M=D
+         @SP
+         A=M
+         D=M
+         @R13
+         A=M
+         M=D
+         ');
+   }
+
    sub write_push_pop {
       my ($self, $command_type, $segment, $index) = @_;
       my $fh = $self->{fh};
 
       print $fh $self->decrement_stack_pointer if $command_type eq 'C_POP';
 
-      if (   $segment eq 'argument') {
+      if (   grep { $segment eq $_ } qw(argument local static this that pointer temp)) {
          if ($command_type eq 'C_PUSH') {
-            print $fh unindent('
-               @' . $index . '
-               D=A
-               @ARG
-               A=M+D
-               D=M
-               @SP
-               A=M
-               M=D');
+            print $fh $self->push_into('ARG',  $index) if $segment eq 'argument';
+            print $fh $self->push_into('LCL',  $index) if $segment eq 'local';
+            print $fh $self->push_into('R16',  $index) if $segment eq 'static';
+            print $fh $self->push_into('THIS', $index) if $segment eq 'this';
+            print $fh $self->push_into('THAT', $index) if $segment eq 'that';
+
+            print $fh $self->push_into('R3',   $index, 0) if $segment eq 'pointer';
+            print $fh $self->push_into('R5',   $index, 0) if $segment eq 'temp';
          }
          else {
-            print $fh unindent('
-               @' . $index . '
-               D=A
-               @ARG
-               D=M+D
-               @R13
-               M=D
-               @SP
-               A=M
-               D=M
-               @R13
-               A=M
-               M=D');
-         }
-      }
-      elsif ($segment eq 'local') {
-         if ($command_type eq 'C_PUSH') {
-            print $fh unindent('
-               @' . $index . '
-               D=A
-               @LCL
-               A=M+D
-               D=M
-               @SP
-               A=M
-               M=D');
-         }
-         else {
-            print $fh unindent('
-               @' . $index . '
-               D=A
-               @LCL
-               D=M+D
-               @R13
-               M=D
-               @SP
-               A=M
-               D=M
-               @R13
-               A=M
-               M=D');
-         }
-      }
-      elsif ($segment eq 'static') {
-         if ($command_type eq 'C_PUSH') {
-            print $fh unindent('
-               @' . $index . '
-               D=A
-               @R16
-               A=M+D
-               D=M
-               @SP
-               A=M
-               M=D');
-         }
-         else {
-            print $fh unindent('
-               @' . $index . '
-               D=A
-               @R16
-               D=M+D
-               @R13
-               M=D
-               @SP
-               A=M
-               D=M
-               @R13
-               A=M
-               M=D');
+            print $fh $self->pop_into('ARG',  $index) if $segment eq 'argument';
+            print $fh $self->pop_into('LCL',  $index) if $segment eq 'local';
+            print $fh $self->pop_into('R16',  $index) if $segment eq 'static';
+            print $fh $self->pop_into('THIS', $index) if $segment eq 'this';
+            print $fh $self->pop_into('THAT', $index) if $segment eq 'that';
+
+            print $fh $self->pop_into('R3',   $index, 0) if $segment eq 'pointer';
+            print $fh $self->pop_into('R5',   $index, 0) if $segment eq 'temp';
          }
       }
       elsif ($segment eq 'constant') {
-         print $fh unindent('
-            @' . $index . '
-            D=A
-            @SP
-            A=M
-            M=D');
-      }
-      elsif ($segment eq 'this') {
-         if ($command_type eq 'C_PUSH') {
-            print $fh unindent('
-               @' . $index . '
-               D=A
-               @THIS
-               A=M+D
-               D=M
-               @SP
-               A=M
-               M=D');
-         }
-         else {
-            print $fh unindent('
-               @' . $index . '
-               D=A
-               @THIS
-               D=M+D
-               @R13
-               M=D
-               @SP
-               A=M
-               D=M
-               @R13
-               A=M
-               M=D');
-         }
-      }
-      elsif ($segment eq 'that') {
-         if ($command_type eq 'C_PUSH') {
-            print $fh unindent('
-               @' . $index . '
-               D=A
-               @THAT
-               A=M+D
-               D=M
-               @SP
-               A=M
-               M=D');
-         }
-         else {
-            print $fh unindent('
-               @' . $index . '
-               D=A
-               @THAT
-               D=M+D
-               @R13
-               M=D
-               @SP
-               A=M
-               D=M
-               @R13
-               A=M
-               M=D');
-         }
-      }
-      elsif ($segment eq 'pointer') {
-         if ($command_type eq 'C_PUSH') {
-            print $fh unindent('
-               @' . $index . '
-               D=A
-               @R3
-               A=A+D
-               D=M
-               @SP
-               A=M
-               M=D');
-         }
-         else {
-            print $fh unindent('
-               @' . $index . '
-               D=A
-               @R3
-               D=A+D
-               @R13
-               M=D
-               @SP
-               A=M
-               D=M
-               @R13
-               A=M
-               M=D');
-         }
-      }
-      elsif ($segment eq 'temp') {
-         if ($command_type eq 'C_PUSH') {
-            print $fh unindent('
-               @' . $index . '
-               D=A
-               @R5
-               A=A+D
-               D=M
-               @SP
-               A=M
-               M=D');
-         }
-         else {
-            print $fh unindent('
-               @' . $index . '
-               D=A
-               @R5
-               D=A+D
-               @R13
-               M=D
-               @SP
-               A=M
-               D=M
-               @R13
-               A=M
-               M=D');
-         }
+         print $fh $self->push_constant($index);
       }
       else {
          die "Fatal: Unknown segment $segment";
