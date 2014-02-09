@@ -238,9 +238,63 @@ package Writer;
       my ($self, $command_type, $segment, $index) = @_;
       my $fh = $self->{fh};
 
+      print $fh $self->decrement_stack_pointer if $command_type eq 'C_POP';
+
       if (   $segment eq 'argument') {
+         if ($command_type eq 'C_PUSH') {
+            print $fh unindent('
+               @' . $index . '
+               D=A
+               @ARG
+               A=M+D
+               D=M
+               @SP
+               A=M
+               M=D');
+         }
+         else {
+            print $fh unindent('
+               @' . $index . '
+               D=A
+               @ARG
+               D=M+D
+               @R13
+               M=D
+               @SP
+               A=M
+               D=M
+               @R13
+               A=M
+               M=D');
+         }
       }
       elsif ($segment eq 'local') {
+         if ($command_type eq 'C_PUSH') {
+            print $fh unindent('
+               @' . $index . '
+               D=A
+               @LCL
+               A=M+D
+               D=M
+               @SP
+               A=M
+               M=D');
+         }
+         else {
+            print $fh unindent('
+               @' . $index . '
+               D=A
+               @LCL
+               D=M+D
+               @R13
+               M=D
+               @SP
+               A=M
+               D=M
+               @R13
+               A=M
+               M=D');
+         }
       }
       elsif ($segment eq 'static') {
       }
@@ -253,19 +307,96 @@ package Writer;
             M=D');
       }
       elsif ($segment eq 'this') {
+         if ($command_type eq 'C_PUSH') {
+            print $fh unindent('
+               @' . $index . '
+               D=A
+               @THIS
+               A=M+D
+               D=M
+               @SP
+               A=M
+               M=D');
+         }
+         else {
+            print $fh unindent('
+               @' . $index . '
+               D=A
+               @THIS
+               D=M+D
+               @R13
+               M=D
+               @SP
+               A=M
+               D=M
+               @R13
+               A=M
+               M=D');
+         }
       }
       elsif ($segment eq 'that') {
+         if ($command_type eq 'C_PUSH') {
+            print $fh unindent('
+               @' . $index . '
+               D=A
+               @THAT
+               A=M+D
+               D=M
+               @SP
+               A=M
+               M=D');
+         }
+         else {
+            print $fh unindent('
+               @' . $index . '
+               D=A
+               @THAT
+               D=M+D
+               @R13
+               M=D
+               @SP
+               A=M
+               D=M
+               @R13
+               A=M
+               M=D');
+         }
       }
       elsif ($segment eq 'pointer') {
       }
       elsif ($segment eq 'temp') {
+         if ($command_type eq 'C_PUSH') {
+            print $fh unindent('
+               @' . $index . '
+               D=A
+               @R5
+               A=A+D
+               D=M
+               @SP
+               A=M
+               M=D');
+         }
+         else {
+            print $fh unindent('
+               @' . $index . '
+               D=A
+               @R5
+               D=A+D
+               @R13
+               M=D
+               @SP
+               A=M
+               D=M
+               @R13
+               A=M
+               M=D');
+         }
       }
       else {
          die "Fatal: Unknown segment $segment";
       }
 
       print $fh $self->increment_stack_pointer if $command_type eq 'C_PUSH';
-      print $fh $self->decrement_stack_pointer if $command_type eq 'C_POP';
    }
 
    sub close_file {
