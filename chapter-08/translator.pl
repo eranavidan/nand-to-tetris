@@ -46,6 +46,7 @@ package Translator;
 
       open(my $fh, '<', $file) or die "Unable to open $file";
       $self->{parser}->load_file($fh);
+      $self->{writer}->set_file($file);
    }
 
    sub translate {
@@ -82,9 +83,22 @@ package Translator;
                $self->{parser}->arg1
             );
          }
+         elsif ($self->{parser}->command_type eq 'C_FUNCTION') {
+            $self->{writer}->write_function(
+               $self->{parser}->arg1,
+               $self->{parser}->arg2
+            );
+         }
+         elsif ($self->{parser}->command_type eq 'C_CALL') {
+            $self->{writer}->write_call(
+               $self->{parser}->arg1,
+               $self->{parser}->arg2
+            );
+         }
+         elsif ($self->{parser}->command_type eq 'C_RETURN') {
+            $self->{writer}->write_return;
+         }
       }
-
-      $self->{writer}->close_file;
    }
 
 
@@ -144,7 +158,7 @@ package Parser;
          return;
       }
 
-      my ($arg1) = $self->{command} =~ /^[\w-]+\s+(\w+)/;
+      my ($arg1) = $self->{command} =~ /^[\w-]+\s+([A-Za-z0-9_.\$\:\-]+)/;
       return $arg1;
    }
 
@@ -172,6 +186,29 @@ package Writer;
 
       open(my $fh, '>', $file) or die "Unable to open $file";
       $self->{fh} = $fh;
+
+      $self->bootstrap_init;
+   }
+
+   sub set_file {
+      my ($self, $file) = @_;
+      ($self->{current_file}) = $file =~ /(\w+)\.vm$/;
+   }
+
+   sub bootstrap_init {
+      my $self = shift;
+      my $fh = $self->{fh};
+
+      $self->{current_function} = 'bootstrap';
+
+      print $fh unindent('
+         @256
+         D=A
+         @SP
+         M=D
+         ');
+
+      $self->write_call('Sys.init', 0);
    }
 
    sub decrement_stack_pointer {
@@ -256,14 +293,17 @@ package Writer;
          die "Fatal: Unknown command $command"
       }
 
+      print $fh "\n";
       print $fh $self->increment_stack_pointer;
    }
 
    sub push_constant {
-      my ($self, $value) = @_;
+      my ($self, $value, $dereference) = @_;
+      $dereference //= 0;
+
       return unindent('
          @' . $value . '
-         D=A
+         '  . ($dereference ? 'D=M' : 'D=A') . '
          @SP
          A=M
          M=D
@@ -273,6 +313,16 @@ package Writer;
    sub push_into {
       my ($self, $base, $index, $dereference) = @_;
       $dereference //= 1;
+
+      if ($base eq 'R16') {
+         return unindent('
+            @' . $self->{current_file} . '.' . $index . '
+            D=M
+            @SP
+            A=M
+            M=D
+            ');
+      }
 
       return unindent('
          @' . $index . '
@@ -289,6 +339,21 @@ package Writer;
    sub pop_into {
       my ($self, $base, $index, $dereference) = @_;
       $dereference //= 1;
+
+      if ($base eq 'R16') {
+         return unindent('
+            @' . $self->{current_file} . '.' . $index . '
+            D=A
+            @R13
+            M=D
+            @SP
+            A=M
+            D=M
+            @R13
+            A=M
+            M=D
+            ');
+      }
 
       return unindent('
          @' . $index . '
@@ -316,7 +381,7 @@ package Writer;
          if ($command_type eq 'C_PUSH') {
             print $fh $self->push_into('ARG',  $index) if $segment eq 'argument';
             print $fh $self->push_into('LCL',  $index) if $segment eq 'local';
-            print $fh $self->push_into('R16',  $index) if $segment eq 'static';
+            print $fh $self->push_into('R16',  $index, 0) if $segment eq 'static';
             print $fh $self->push_into('THIS', $index) if $segment eq 'this';
             print $fh $self->push_into('THAT', $index) if $segment eq 'that';
 
@@ -326,7 +391,7 @@ package Writer;
          else {
             print $fh $self->pop_into('ARG',  $index) if $segment eq 'argument';
             print $fh $self->pop_into('LCL',  $index) if $segment eq 'local';
-            print $fh $self->pop_into('R16',  $index) if $segment eq 'static';
+            print $fh $self->pop_into('R16',  $index, 0) if $segment eq 'static';
             print $fh $self->pop_into('THIS', $index) if $segment eq 'this';
             print $fh $self->pop_into('THAT', $index) if $segment eq 'that';
 
@@ -371,20 +436,189 @@ package Writer;
          @SP
          A=M
          D=M
-         @'. $self->{current_function} . ':' . $label . '
+         @' . $self->{current_function} . ':' . $label . '
          D;JNE');
    }
 
    sub write_function {
+      my ($self, $function, $argc) = @_;
+      my $fh = $self->{fh};
 
+      $self->{current_function} = $function;
+
+      print $fh unindent('
+         (' . $function . ')');
+
+      $self->write_push_pop('C_PUSH', 'constant', 0) for (0..$argc - 1);
+   }
+
+   sub save_segment {
+      my ($self, $segment) = @_;
+      return $self->push_constant($segment, 1);
    }
 
    sub write_call {
+      my ($self, $function, $argc) = @_;
+      my $fh = $self->{fh};
 
+      $self->{label_count} += 1;
+
+      print $fh unindent('
+         @' . $self->{current_function} . '_return_' . $self->{label_count} . '
+         D=A
+         @SP
+         A=M
+         M=D
+         ');
+
+      print $fh $self->increment_stack_pointer;
+
+      print $fh unindent('
+         @LCL
+         D=M
+         @SP
+         A=M
+         M=D
+         ');
+
+      print $fh $self->increment_stack_pointer;
+
+      print $fh unindent('
+         @ARG
+         D=M
+         @SP
+         A=M
+         M=D
+         ');
+
+      print $fh $self->increment_stack_pointer;
+
+      print $fh unindent('
+         @THIS
+         D=M
+         @SP
+         A=M
+         M=D
+         ');
+
+      print $fh $self->increment_stack_pointer;
+
+      print $fh unindent('
+         @THAT
+         D=M
+         @SP
+         A=M
+         M=D
+         ');
+
+      print $fh $self->increment_stack_pointer;
+
+      print $fh unindent('
+         @' . ($argc + 5) . '
+         D=A
+         @SP
+         D=M-D
+         @ARG
+         M=D
+         ');
+
+      print $fh unindent('
+         @SP
+         D=M
+         @LCL
+         M=D
+         ');
+
+      print $fh unindent('
+         @' . $function . '
+         0;JMP
+         ');
+
+      print $fh unindent('
+         (' . $self->{current_function} . '_return_' . $self->{label_count} . ')
+         ');
    }
 
    sub write_return {
+      my $self = shift;
+      my $fh = $self->{fh};
 
+      print $fh unindent('
+         @LCL
+         D=M
+         @R13
+         M=D
+         ');
+
+      print $fh unindent('
+         @5
+         D=A
+         @R13
+         A=M-D
+         D=M
+         @R14
+         M=D
+         ');
+
+      print $fh unindent('
+         @SP
+         AM=M-1
+         D=M
+         @ARG
+         A=M
+         M=D
+         ');
+
+      print $fh unindent('
+         @ARG
+         D=M+1
+         @SP
+         M=D
+         ');
+
+      print $fh unindent('
+         @R13
+         A=M-1
+         D=M
+         @THAT
+         M=D
+         ');
+
+      print $fh unindent('
+         @2
+         D=A
+         @R13
+         A=M-D
+         D=M
+         @THIS
+         M=D
+         ');
+
+      print $fh unindent('
+         @3
+         D=A
+         @R13
+         A=M-D
+         D=M
+         @ARG
+         M=D
+         ');
+
+      print $fh unindent('
+         @4
+         D=A
+         @R13
+         A=M-D
+         D=M
+         @LCL
+         M=D
+         ');
+
+      print $fh unindent('
+         @R14
+         A=M
+         0;JMP
+         ');
    }
 
    sub close_file {
